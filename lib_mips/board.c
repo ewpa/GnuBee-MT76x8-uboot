@@ -916,7 +916,6 @@ __attribute__((nomips16)) void board_init_f(ulong bootflag)
 
 #define GPIO_SYSCTL	0x10000000
 #define GPIO2_MODE	0x00000064
-#define GPIO1_MODE	0x00000060
 
 #define GPIO_REG	0x10000600
 #define GPIO_DIR_0	0X00000000
@@ -983,41 +982,19 @@ void led_off(void){
 //	printf("led is off\n");
 }
 
-int reset_button_enable(){
+int reset_button_enable(int gpio){
 	/* set gpio 38 as input with inverted polarity*/
-	if (webgpio == 38){
-		ra_or(GPIO_SYSCTL + GPIO1_MODE,(0x00000001 << 14) );
-		ra_and(GPIO_REG + GPIO_DIR_1, ~(0x0001 << 6) );
-		ra_or(GPIO_REG + GPIO_POL_1, (0x0001 << 6) );
-	/* set gpio 46 as input with inverted polarity*/
-	}else if (webgpio == 46){
-		ra_and(GPIO_SYSCTL + GPIO1_MODE,~(0x00000003<<24) );
-		ra_or(GPIO_SYSCTL + GPIO1_MODE,(0x00000001 << 24) );
-		ra_and(GPIO_REG + GPIO_DIR_1, ~(0x0001 << 6) );
-		ra_or(GPIO_REG + GPIO_POL_1, (0x0001 << 6) );
-	}
+	ra_and(GPIO_REG + GPIO_DIR_1, ~(0x0001 << 6 ) );
+	ra_or(GPIO_REG + GPIO_POL_1, (0x0001 << 6 ) );
 }	
-
-int reset_button_status(){
+int reset_button_status(void){
 	unsigned reg = 0x00000000;
-	if (webgpio == 38){
-	/* read gpio 38 */
-		reg = ra_inl( (GPIO_REG + GPIO_DATA_1) );
-		if ( reg & (0x0001 << 6) ){
-			return 1;
-		}else{
-			return 0;
-		}			
-	}else if (webgpio == 46){
-	/* read gpio 46 */
-		reg = ra_inl( (GPIO_REG + GPIO_DATA_1) );
-		if ( reg & (0x0001 << 14) ){
-			return 1;
-		}else{
-			return 0;
-		}			
+	reg = ra_inl( (GPIO_REG + GPIO_DATA_1) );
+	if ( reg & (0x0001 << 6) ){
+		return 1;
+	}else{
+		return 0;
 	}
-	return 0;
 }
 
 void OperationSelect(void)
@@ -2134,15 +2111,14 @@ __attribute__((nomips16)) void board_init_r (gd_t *id, ulong dest_addr)
 	    s = getenv ("bootdelay");
 	    timer1 = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_BOOTDELAY;
 	}
-	int web_enabled, reset_button, threeseconds = 0, sixseconds = 0;
-	int nineseconds = 0, web_timer = 0;
+	int web_enabled, reset_button, threeseconds = 0, sixseconds = 0, nineseconds = 0, web_timer = 0;
 	{
 	    char * s;
    	    s = getenv ("webgpio");
     	    webgpio = s ? (int)simple_strtol(s, NULL, 10) : CONFIG_WEBGPIO;
     	}
-	reset_button_enable(webgpio);
-	reset_button = reset_button_status(webgpio);
+	reset_button_enable(38);
+	reset_button = reset_button_status();
 
 	OperationSelect();   
 	web_enabled = 0;
@@ -2182,7 +2158,7 @@ __attribute__((nomips16)) void board_init_r (gd_t *id, ulong dest_addr)
 			}
 			/* button changed */
 			if (web_enabled){
-				if (reset_button_status(webgpio) != reset_button){
+				if (reset_button_status() != reset_button){
 					printf("GPIO %i went %s\n", webgpio, reset_button ? "low" : "high");
 					reset_button = (reset_button == 0) ? 1 : 0;
 				}
